@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClickUp API Demo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        #tasks { margin-top: 20px; }
+        .task { padding: 10px; border: 1px solid #ccc; margin: 5px; }
+        .subtask { margin-left: 20px; font-size: 0.9em; color: gray; }
+    </style>
+</head>
+<body>
+    <h1>Daftar Tugas dari ClickUp</h1>
+    <button onclick="getTasks()">Ambil Tugas</button>
+    <button onclick="downloadExcel()">Unduh Excel</button>
+    <div id="tasks"></div>
+
+    <script>
+        const API_KEY = "pk_276628723_EVABHHP3H0Z6O82V316NLL5JNIV22GBH"; // Ganti dengan API Key Anda
+        const LIST_ID = "901805594811"; // Ganti dengan ID List dari ClickUp Anda
+        let tasksData = []; // Menyimpan data tugas dan subtasks
+
+        async function getTasks() {
+            const response = await fetch(`https://api.clickup.com/api/v2/list/${LIST_ID}/task`, {
+                method: 'GET',
+                headers: { 'Authorization': API_KEY }
+            });
+            
+            const data = await response.json();
+            const taskContainer = document.getElementById("tasks");
+            taskContainer.innerHTML = "";
+            tasksData = []; // Reset data sebelumnya
+            
+            if (data.tasks) {
+                for (const task of data.tasks) {
+                    const taskElement = document.createElement("div");
+                    taskElement.className = "task";
+                    taskElement.textContent = task.name;
+                    taskContainer.appendChild(taskElement);
+
+                    // Simpan data tugas
+                    const taskInfo = { task_name: task.name, subtasks: [] };
+                    tasksData.push(taskInfo);
+
+                    // Ambil subtasks untuk setiap tugas
+                    await getSubtasks(task.id, taskInfo);
+                }
+            } else {
+                taskContainer.innerHTML = "Gagal mengambil data tugas.";
+            }
+        }
+
+        async function getSubtasks(taskId, taskInfo) {
+            const response = await fetch(`https://api.clickup.com/api/v2/task/${taskId}/subtasks`, {
+                method: 'GET',
+                headers: { 'Authorization': API_KEY }
+            });
+
+            const data = await response.json();
+
+            if (data.subtasks && data.subtasks.length > 0) {
+                data.subtasks.forEach(subtask => {
+                    const subtaskElement = document.createElement("div");
+                    subtaskElement.className = "subtask";
+                    subtaskElement.textContent = `- ${subtask.name}`;
+                    taskInfo.subtasks.push(subtask.name); // Simpan subtask ke dalam taskInfo
+                });
+            }
+        }
+
+        function downloadExcel() {
+            // Membuat data untuk file Excel
+            const excelData = tasksData.map(task => {
+                return {
+                    Task: task.task_name,
+                    Subtasks: task.subtasks.join(", ") // Gabungkan subtasks menjadi satu string
+                };
+            });
+
+            const ws = XLSX.utils.json_to_sheet(excelData); // Mengonversi data JSON menjadi worksheet
+            const wb = XLSX.utils.book_new(); // Membuat workbook baru
+            XLSX.utils.book_append_sheet(wb, ws, "Tasks"); // Menambahkan worksheet ke workbook
+            XLSX.writeFile(wb, "tasks.xlsx"); // Menulis dan mengunduh file Excel
+        }
+    </script>
+</body>
+</html>
