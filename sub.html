@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ClickUp Main Tasks</title>
+    <style>
+      .subtask-list {
+        display: none;
+        margin-left: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>ClickUp Main Tasks</h1>
+    <ul id="tasks"></ul>
+
+    <script>
+      const apiToken = "pk_276628723_EVABHHP3H0Z6O82V316NLL5JNIV22GBH"; // Ganti dengan API Token Anda
+      const listId = "901805594811"; // Ganti dengan List ID yang ingin Anda ambil datanya
+
+      async function fetchClickUpTasks() {
+        try {
+          const response = await fetch(`https://api.clickup.com/api/v2/list/${listId}/task?subtasks=true`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${apiToken}`,
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error("Network response was not ok " + response.statusText);
+          }
+
+          const data = await response.json();
+          const tasks = data.tasks;
+          const tasksElement = document.getElementById("tasks");
+
+          tasks.forEach((task) => {
+            const taskItem = document.createElement("li");
+            taskItem.textContent = task.name;
+
+            if (task.name === "Badan Pendapatan") {
+              const toggleButton = document.createElement("button");
+              toggleButton.textContent = "Show Subtasks";
+              toggleButton.onclick = () => {
+                const subtaskList = taskItem.querySelector(".subtask-list");
+                if (subtaskList.style.display === "none") {
+                  subtaskList.style.display = "block";
+                  toggleButton.textContent = "Hide Subtasks";
+                } else {
+                  subtaskList.style.display = "none";
+                  toggleButton.textContent = "Show Subtasks";
+                }
+              };
+
+              taskItem.appendChild(toggleButton);
+
+              if (task.subtasks && task.subtasks.length > 0) {
+                const subtaskList = document.createElement("ul");
+                subtaskList.className = "subtask-list";
+                task.subtasks.forEach((subtask) => {
+                  const subtaskItem = document.createElement("li");
+                  subtaskItem.textContent = subtask.name;
+                  subtaskList.appendChild(subtaskItem);
+                });
+                taskItem.appendChild(subtaskList);
+              }
+            }
+
+            tasksElement.appendChild(taskItem);
+          });
+        } catch (error) {
+          console.error("There was a problem with the fetch operation:", error);
+        }
+      }
+
+      fetchClickUpTasks();
+    </script>
+  </body>
+</html>

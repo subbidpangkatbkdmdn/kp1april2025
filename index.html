@@ -1,90 +1,229 @@
 <!DOCTYPE html>
 <html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClickUp API Demo</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Data Kedinasan & Nama Orang</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        #tasks { margin-top: 20px; }
-        .task { padding: 10px; border: 1px solid #ccc; margin: 5px; }
-        .subtask { margin-left: 20px; font-size: 0.9em; color: gray; }
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      .kedinasan {
+        margin-bottom: 15px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+      .kedinasan h3 {
+        margin: 0;
+        padding: 0;
+      }
+      .subtask {
+        margin-left: 20px;
+        color: #555;
+      }
+      .toggle-button {
+        cursor: pointer;
+        color: blue;
+        text-decoration: underline;
+        display: block;
+        margin-top: 5px;
+      }
+      .hidden {
+        display: none;
+      }
+      .tag {
+        background-color: #654321;
+        color: white;
+        padding: 2px 5px;
+        border-radius: 3px;
+        font-size: 12px;
+        margin-left: 5px;
+      }
+      .status {
+        padding: 2px 5px;
+        border-radius: 3px;
+        font-size: 12px;
+        margin-left: 10px;
+      }
+      .status.done {
+        background-color: green;
+        color: white;
+      }
+      .status.in-progress {
+        background-color: orange;
+        color: white;
+      }
+      .status.pending {
+        background-color: red;
+        color: white;
+      }
+      .download-btn {
+        margin-top: 10px;
+        padding: 10px;
+        background-color: green;
+        color: white;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+      }
     </style>
-</head>
-<body>
-    <h1>Daftar Tugas dari ClickUp</h1>
-    <button onclick="getTasks()">Ambil Tugas</button>
-    <button onclick="downloadExcel()">Unduh Excel</button>
-    <div id="tasks"></div>
+  </head>
+  <body>
+    <h1>Daftar Kedinasan & Subtasks</h1>
+    <input type="text" id="searchInput" placeholder="Cari Kedinasan..." oninput="filterData()" />
+    <button class="download-btn" onclick="downloadExcel()">Unduh Excel</button>
+    <div id="kedinasanContainer"></div>
 
     <script>
-        const API_KEY = "pk_276628723_EVABHHP3H0Z6O82V316NLL5JNIV22GBH"; // Ganti dengan API Key Anda
-        const LIST_ID = "901805594811"; // Ganti dengan ID List dari ClickUp Anda
-        let tasksData = []; // Menyimpan data tugas dan subtasks
+      const apiToken = "pk_276628723_EVABHHP3H0Z6O82V316NLL5JNIV22GBH";
+      const listId = "901805594811";
+      let fetchedData = [];
 
-        async function getTasks() {
-            const response = await fetch(`https://api.clickup.com/api/v2/list/${LIST_ID}/task`, {
-                method: 'GET',
-                headers: { 'Authorization': API_KEY }
+      async function fetchData() {
+        try {
+          let allTasks = [];
+          let page = 0;
+          let hasMore = true;
+
+          while (hasMore) {
+            const response = await fetch(`https://api.clickup.com/api/v2/list/${listId}/task?page=${page}&subtasks=true`, {
+              method: "GET",
+              headers: { Authorization: apiToken },
             });
-            
-            const data = await response.json();
-            const taskContainer = document.getElementById("tasks");
-            taskContainer.innerHTML = "";
-            tasksData = []; // Reset data sebelumnya
-            
-            if (data.tasks) {
-                for (const task of data.tasks) {
-                    const taskElement = document.createElement("div");
-                    taskElement.className = "task";
-                    taskElement.textContent = task.name;
-                    taskContainer.appendChild(taskElement);
+            const result = await response.json();
+            allTasks = allTasks.concat(result.tasks);
+            hasMore = result.tasks.length > 0;
+            page++;
+          }
 
-                    // Simpan data tugas
-                    const taskInfo = { task_name: task.name, subtasks: [] };
-                    tasksData.push(taskInfo);
+          console.log("Total Kedinasan Ditampilkan:", allTasks.length);
 
-                    // Ambil subtasks untuk setiap tugas
-                    await getSubtasks(task.id, taskInfo);
-                }
-            } else {
-                taskContainer.innerHTML = "Gagal mengambil data tugas.";
+          const kedinasanMap = {};
+          allTasks.forEach((task) => {
+            if (!task.parent) {
+              kedinasanMap[task.id] = {
+                nama: task.name,
+                status: task.status.status,
+                subtasks: [],
+                assignees: task.assignees.map((a) => ({ nama: a.username, tags: task.tags.map((tag) => tag.name) })),
+              };
             }
-        }
+          });
 
-        async function getSubtasks(taskId, taskInfo) {
-            const response = await fetch(`https://api.clickup.com/api/v2/task/${taskId}/subtasks`, {
-                method: 'GET',
-                headers: { 'Authorization': API_KEY }
-            });
-
-            const data = await response.json();
-
-            if (data.subtasks && data.subtasks.length > 0) {
-                data.subtasks.forEach(subtask => {
-                    const subtaskElement = document.createElement("div");
-                    subtaskElement.className = "subtask";
-                    subtaskElement.textContent = `- ${subtask.name}`;
-                    taskInfo.subtasks.push(subtask.name); // Simpan subtask ke dalam taskInfo
-                });
+          allTasks.forEach((task) => {
+            if (task.parent && kedinasanMap[task.parent]) {
+              kedinasanMap[task.parent].subtasks.push({ nama: task.name, status: task.status.status, tags: task.tags.map((tag) => tag.name) });
             }
-        }
+          });
 
-        function downloadExcel() {
-            // Membuat data untuk file Excel
-            const excelData = tasksData.map(task => {
-                return {
-                    Task: task.task_name,
-                    Subtasks: task.subtasks.join(", ") // Gabungkan subtasks menjadi satu string
-                };
-            });
-
-            const ws = XLSX.utils.json_to_sheet(excelData); // Mengonversi data JSON menjadi worksheet
-            const wb = XLSX.utils.book_new(); // Membuat workbook baru
-            XLSX.utils.book_append_sheet(wb, ws, "Tasks"); // Menambahkan worksheet ke workbook
-            XLSX.writeFile(wb, "tasks.xlsx"); // Menulis dan mengunduh file Excel
+          fetchedData = Object.values(kedinasanMap);
+          return fetchedData;
+        } catch (error) {
+          console.error("Error fetching data:", error);
+          return [];
         }
+      }
+
+      function getStatusClass(status) {
+        switch (status.toLowerCase()) {
+          case "done":
+            return "status done";
+          case "in progress":
+            return "status in-progress";
+          default:
+            return "status pending";
+        }
+      }
+
+      async function renderData() {
+        const data = await fetchData();
+        const container = document.getElementById("kedinasanContainer");
+        container.innerHTML = "";
+
+        data.forEach((kedinasan) => {
+          const div = document.createElement("div");
+          div.className = "kedinasan";
+          div.innerHTML = `<h3>${kedinasan.nama} <span class='${getStatusClass(kedinasan.status)}'>${kedinasan.status}</span></h3>`;
+
+          kedinasan.assignees.forEach((assignee) => {
+            const assigneeDiv = document.createElement("div");
+            assigneeDiv.className = "subtask";
+            assigneeDiv.innerHTML = `Ditugaskan kepada: ${assignee.nama} ${assignee.tags.map((tag) => `<span class='tag'>${tag}</span>`).join(" ")}`;
+            div.appendChild(assigneeDiv);
+          });
+
+          kedinasan.subtasks.forEach((subtask) => {
+            const subtaskDiv = document.createElement("div");
+            subtaskDiv.className = "subtask";
+            subtaskDiv.innerHTML = `▶ ${subtask.nama} <span class='${getStatusClass(subtask.status)}'>${subtask.status}</span> ${subtask.tags.map((tag) => `<span class='tag'>${tag}</span>`).join(" ")}`;
+            div.appendChild(subtaskDiv);
+          });
+
+          container.appendChild(div);
+        });
+      }
+
+      function downloadExcel() {
+        let wb = XLSX.utils.book_new();
+        let wsData = [["Kedinasan", "Nama", "Status", "Tags"]];
+
+        fetchedData.forEach((kedinasan) => {
+          wsData.push([kedinasan.nama, "", kedinasan.status, ""]);
+          kedinasan.assignees.forEach((assignee) => {
+            wsData.push(["", assignee.nama, "", assignee.tags.join(", ")]);
+          });
+          kedinasan.subtasks.forEach((subtask) => {
+            wsData.push(["", subtask.nama, subtask.status, subtask.tags.join(", ")]);
+          });
+        });
+
+        let ws = XLSX.utils.aoa_to_sheet(wsData);
+        XLSX.utils.book_append_sheet(wb, ws, "Data");
+        XLSX.writeFile(wb, "Data_Kedinasan.xlsx");
+      }
+
+      function filterData() {
+        const searchValue = document.getElementById("searchInput").value.toLowerCase();
+        const filteredData = fetchedData.filter(
+          (kedinasan) =>
+            kedinasan.nama.toLowerCase().includes(searchValue) ||
+            kedinasan.assignees.some((assignee) => assignee.nama.toLowerCase().includes(searchValue)) ||
+            kedinasan.subtasks.some((subtask) => subtask.nama.toLowerCase().includes(searchValue))
+        );
+        renderFilteredData(filteredData);
+      }
+
+      function renderFilteredData(data) {
+        const container = document.getElementById("kedinasanContainer");
+        container.innerHTML = "";
+
+        data.forEach((kedinasan) => {
+          const div = document.createElement("div");
+          div.className = "kedinasan";
+          div.innerHTML = `<h3>${kedinasan.nama} <span class='${getStatusClass(kedinasan.status)}'>${kedinasan.status}</span></h3>`;
+
+          kedinasan.assignees.forEach((assignee) => {
+            const assigneeDiv = document.createElement("div");
+            assigneeDiv.className = "subtask";
+            assigneeDiv.innerHTML = `Ditugaskan kepada: ${assignee.nama} ${assignee.tags.map((tag) => `<span class='tag'>${tag}</span>`).join(" ")}`;
+            div.appendChild(assigneeDiv);
+          });
+
+          kedinasan.subtasks.forEach((subtask) => {
+            const subtaskDiv = document.createElement("div");
+            subtaskDiv.className = "subtask";
+            subtaskDiv.innerHTML = `▶ ${subtask.nama} <span class='${getStatusClass(subtask.status)}'>${subtask.status}</span> ${subtask.tags.map((tag) => `<span class='tag'>${tag}</span>`).join(" ")}`;
+            div.appendChild(subtaskDiv);
+          });
+
+          container.appendChild(div);
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", renderData);
     </script>
-</body>
+  </body>
 </html>
