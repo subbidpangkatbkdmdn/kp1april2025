@@ -63,19 +63,48 @@
       .download-btn {
         margin-top: 10px;
         padding: 10px;
-        background-color: rgb(9, 0, 128);
+        background-color: rgb(74, 72, 100);
         color: white;
         border: none;
         cursor: pointer;
         border-radius: 5px;
+        display: inline-block;
+        -webkit-box-shadow: 3px 3px 5px rgba(2, 0, 0, 0.2);
+	      -moz-box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
+        box-shadow: 5px 3px 5px #3335334d; 
+      }
+      .cari-btn {
+        margin-top: 10px;
+        padding: 10px;
+        color: rgb(44, 3, 3);
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+        display: inline-block;
+        -webkit-box-shadow: 3px 3px 5px rgba(2, 0, 0, 0.2);
+	      -moz-box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
+        box-shadow: 5px 3px 5px #3335334d;
+        width: 220px;
+      }
+      h1 {
+        font-size: 25px;
+	      text-shadow: 1px 3px 3px #3333;
+	      color: #052b52;
+	      font-weight: 700;
+      }
+      body { 
+        font-family: 'Poppins', sans-serif;
+	      font-weight: 400;
+	      font-size:14px;
+	      color:#0c0b0b;
       }
     </style>
   </head>
   <body>
     <h1>MONITORING USUL KENAIKAN PANGKAT TMT 01 APRIL 2025 </h1>
-    <input type="text" id="searchInput" placeholder="Cari Nama/Perangkat Daerah" oninput="filterData()" />
+    <input class="cari-btn" type="text" id="searchInput" placeholder="Cari Nama/Perangkat Daerah..." oninput="filterData()" />
     <button class="download-btn" onclick="downloadExcel()">Unduh Excel</button>
-    <div id="kedinasanContainer"></div>
+  <hr><hr>  <div id="kedinasanContainer"></div>
 
     <script>
       const apiToken = "pk_276628723_EVABHHP3H0Z6O82V316NLL5JNIV22GBH";
